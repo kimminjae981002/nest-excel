@@ -1,34 +1,30 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
-import { ExcelService } from './excel.service';
-import { CreateExcelDto } from './dto/create-excel.dto';
-import { UpdateExcelDto } from './dto/update-excel.dto';
+import {
+  Controller,
+  Post,
+  UseInterceptors,
+  UploadedFile,
+} from '@nestjs/common';
+import * as XLSX from 'xlsx';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @Controller('excel')
 export class ExcelController {
-  constructor(private readonly excelService: ExcelService) {}
+  constructor() {}
 
   @Post()
-  create(@Body() createExcelDto: CreateExcelDto) {
-    return this.excelService.create(createExcelDto);
-  }
+  @UseInterceptors(FileInterceptor('file'))
+  handleExcel(@UploadedFile() file) {
+    // xlsx buffer 생성
+    const workBook = XLSX.read(file.buffer, { type: 'buffer' });
+    // 첫번째 시트 이름 검색
+    const sheetName = workBook.SheetNames[0];
 
-  @Get()
-  findAll() {
-    return this.excelService.findAll();
-  }
+    // 첫번째 sheet를 사용
+    const sheet = workBook.Sheets[sheetName];
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.excelService.findOne(+id);
-  }
+    // sheet의 정보를 json array로 변환한다.
+    const rows = XLSX.utils.sheet_to_json(sheet, { defval: null });
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateExcelDto: UpdateExcelDto) {
-    return this.excelService.update(+id, updateExcelDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.excelService.remove(+id);
+    return rows;
   }
 }
